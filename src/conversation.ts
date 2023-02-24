@@ -1,15 +1,14 @@
-import { ChatGPTAPI, ChatGPTConversation } from 'chatgpt';
+import { ChatGPTUnofficialProxyAPI ,ChatMessage} from 'chatgpt';
 import { env } from './utils/env';
 
 // store conversation
-const memory = new Map<string, ChatGPTConversation>();
+const memory = new Map<string, ChatGPTUnofficialProxyAPI>();
+const chathistory = new Map<string, any>();
 
-const api = new ChatGPTAPI({
-  sessionToken: env.CHATGPT_TOKEN,
-});
-
-const check = () => {
-  return api.ensureAuth();
+const api = {
+  apiReverseProxyUrl: 'https://chat.duti.tech/api/conversation',
+  // apiReverseProxyUrl: 'https://gpt.pawan.krd/backend-api/conversation',
+  accessToken: env.CHATGPT_TOKEN,
 };
 
 /**
@@ -18,21 +17,30 @@ const check = () => {
 export const send = async (
   id: number | string,
   context: string,
-  onResponse?: (contents: string) => void,
 ) => {
   const sId = id.toString();
   let conversation = memory.get(sId);
+  let history = chathistory.get(sId);
 
   if (!conversation) {
     conversation = await create(sId);
   }
+  let response;
+  if (history) {
+    response = await conversation.sendMessage(context, {
+      timeoutMs: 2 * 60 * 1000,
+      conversationId: history.conversationId,
+      parentMessageId: history.id
+    });
+  }else{
+    response = await conversation.sendMessage(context, {
+      timeoutMs: 2 * 60 * 1000,
+    });
+  }
 
-  return conversation.sendMessage(context, {
-    timeoutMs: 2 * 60 * 1000,
-    onConversationResponse(even) {
-      onResponse?.(even.message?.content.parts[0] || '');
-    },
-  });
+  chathistory.set(sId, response);
+
+  return response.text;
 };
 
 /**
@@ -40,8 +48,7 @@ export const send = async (
  */
 export const create = async (id: number | string) => {
   const sId = id.toString();
-  const conversation = api.getConversation();
-  await check();
+  const conversation = new ChatGPTUnofficialProxyAPI(api);
   memory.set(sId, conversation);
   return conversation;
 };
