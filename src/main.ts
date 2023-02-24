@@ -53,14 +53,7 @@ bot.on('text', async (ctx) => {
       try {
         const message = await ctx.sendMessage('typing..');
         // Send the message to chatGPT
-        const response = await send(id, text, (contents) =>
-          editMessage(
-            ctx,
-            message.chat.id,
-            message.message_id,
-            contents || 'typing...',
-          ),
-        );
+        const response = await send(id, text);
 
         // delete the message and send a new one to notice the user
         await Promise.all([
