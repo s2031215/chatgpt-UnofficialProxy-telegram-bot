@@ -1,12 +1,21 @@
-import { ChatGPTUnofficialProxyAPI ,ChatMessage} from 'chatgpt';
+import { ChatGPTUnofficialProxyAPI } from 'chatgpt';
 import { env } from './utils/env';
+import * as fs from 'fs';
 
 // store conversation
 const memory = new Map<string, ChatGPTUnofficialProxyAPI>();
-const chathistory = new Map<string, any>();
+// store chathistory form file
+const chathistory = (function () {
+  if (fs.existsSync('./msgdata.json')) {
+    let rawdata = fs.readFileSync('./msgdata.json', 'utf-8');
+    let jsondata = JSON.parse(rawdata);
+    return new Map<string, any>(Object.entries(jsondata));
+  }
+  return new Map<string, any>();
+})();
 
 const api = {
-  apiReverseProxyUrl: 'https://chat.duti.tech/api/conversation',
+  // apiReverseProxyUrl: 'https://chat.duti.tech/api/conversation',
   // apiReverseProxyUrl: 'https://gpt.pawan.krd/backend-api/conversation',
   accessToken: env.CHATGPT_TOKEN,
 };
@@ -32,13 +41,15 @@ export const send = async (
       conversationId: history.conversationId,
       parentMessageId: history.id
     });
-  }else{
+  } else {
     response = await conversation.sendMessage(context, {
       timeoutMs: 2 * 60 * 1000,
     });
   }
 
+  console.log(" sID: ", sId, " message: ", context, " response: ", response)
   chathistory.set(sId, response);
+  fs.writeFileSync('./msgdata.json', JSON.stringify(Object.fromEntries(chathistory)), 'utf-8');
 
   return response.text;
 };
